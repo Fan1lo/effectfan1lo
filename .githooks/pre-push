@@ -1,0 +1,24 @@
+#!/bin/sh
+# EffectCraft bug-fix fork: main is read-only, origin is upstream.
+# This clone is not meant to publish anything. Override deliberately:
+#   ALLOW_PUSH=1 git push origin <branch>
+
+set -u
+
+remote="${1:-origin}"
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "${ALLOW_PUSH:-0}" != "1" ]; then
+    echo "pre-push: pushing to '$remote' is blocked in this fork." >&2
+    echo "  origin is https://github.com/storytold/effectcraft.git (upstream, not ours)." >&2
+    echo "  Keep the work local unless the owner explicitly asks for a PR." >&2
+    echo "  Deliberate override: ALLOW_PUSH=1 git push $remote $branch" >&2
+    exit 1
+fi
+
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+    echo "pre-push: refusing to push '$branch' even with ALLOW_PUSH=1." >&2
+    exit 1
+fi
+
+exit 0
