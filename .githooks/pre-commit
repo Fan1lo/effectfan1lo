@@ -1,0 +1,39 @@
+#!/bin/sh
+# EffectCraft bug-fix fork: refuse commits on main, verify every other commit.
+# Installed through: powershell -File scripts/install-hooks.ps1 (core.hooksPath=.githooks)
+
+set -u
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+    echo "pre-commit: refusing to commit on '$branch'." >&2
+    echo "  main mirrors upstream/storytold and must stay clean." >&2
+    echo "  Create or switch to a work branch first: git switch -c bugfix/BF-000-short-name" >&2
+    exit 1
+fi
+
+if [ "${SKIP_CHECKS:-0}" = "1" ]; then
+    echo "pre-commit: SKIP_CHECKS=1 - checks skipped. Record why in PROGRESS.md." >&2
+    exit 0
+fi
+
+if ! command -v powershell.exe >/dev/null 2>&1; then
+    echo "pre-commit: powershell.exe not found - cannot run scripts/check.ps1." >&2
+    echo "  Commit with SKIP_CHECKS=1 and run the checks by hand." >&2
+    exit 1
+fi
+
+echo "pre-commit: fast checks (fmt, clippy/tests of changed crates, layers, assets)..." >&2
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/scripts/check.ps1" -Mode fast
+status=$?
+if [ "$status" -ne 0 ]; then
+    echo "" >&2
+    echo "pre-commit: checks failed (exit $status). Nothing was committed." >&2
+    echo "  Fix the problem, or bypass once with: SKIP_CHECKS=1 git commit ..." >&2
+    echo "  (and record the reason in PROGRESS.md)." >&2
+    exit "$status"
+fi
+exit 0
